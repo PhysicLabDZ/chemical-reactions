@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="manifest.json">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="التفاعلات الكيميائية">
+    <meta name="theme-color" content="#667eea">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <title>محاكاة التفاعلات الكيميائية</title>
+    <style>
+        * { box-sizing: border-box; }
+
+        html, body {
+            height: 100%;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(to bottom, #667eea, #764ba2);
+            height: 100dvh;
+            overflow: hidden;
+        }
+
+        .app-shell {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            padding: 8px;
+            gap: 6px;
+        }
+
+        .app-header {
+            flex: 0 0 auto;
+            text-align: center;
+            color: white;
+            padding: 2px 0;
+        }
+
+        .app-header h1 {
+            margin: 0;
+            font-size: 1.15em;
+        }
+
+        .app-header .subtitle {
+            margin: 2px 0 0;
+            font-size: 0.75em;
+            opacity: 0.9;
+        }
+
+        .main-area {
+            flex: 1 1 auto;
+            min-height: 0;
+            display: grid;
+            grid-template-columns: 210px 1fr 240px;
+            gap: 8px;
+        }
+
+        .panel {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+            padding: 10px;
+            min-height: 0;
+            overflow-y: auto;
+        }
+
+        .stage-panel {
+            position: relative;
+            display: flex;
+            align-items: stretch;
+            justify-content: center;
+            padding: 8px;
+            overflow: visible;
+        }
+
+        .details-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        /* عناصر التحكم */
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+
+        .control-group label {
+            flex: 0 0 auto;
+            font-weight: bold;
+            color: #34495e;
+            font-size: 0.72em;
+            width: 62px;
+            line-height: 1.2;
+        }
+
+        select, button {
+            font-size: 0.8em;
+            border-radius: 6px;
+            border: 2px solid #ddd;
+            cursor: pointer;
+            padding: 6px 6px;
+        }
+
+        select {
+            flex: 1 1 auto;
+            width: 100%;
+            min-width: 0;
+        }
+
+        .reactants-row {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+
+        .reactants-row .control-group {
+            flex: 1 1 50%;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 3px;
+            margin-bottom: 0;
+        }
+
+        .reactants-row .control-group label {
+            width: auto;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 8px;
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            font-weight: bold;
+            flex: 1 1 auto;
+            padding: 8px 4px;
+            font-size: 0.72em;
+        }
+
+        button:hover { background: #5568d3; }
+        button.stop { background: #e74c3c; }
+        button.stop:hover { background: #c0392b; }
+        button.reset { background: #95a5a6; }
+        button.reset:hover { background: #7f8c8d; }
+
+        .speed-group {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 3px;
+        }
+
+        .speed-group label { width: auto; }
+
+        input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+        }
+
+        #speedLabel {
+            font-weight: bold;
+            color: #2c3e50;
+            font-size: 0.72em;
+            text-align: center;
+            display: block;
+        }
+
+        #canvasWrap {
+            position: relative;
+            flex: 1 1 auto;
+            min-height: 0;
+            min-width: 0;
+            display: flex;
+            align-items: flex-start;
+            justify-content: flex-start;
+            background: linear-gradient(to bottom, #e8f5e9, #c8e6c9);
+            border-radius: 10px;
+            border: 3px solid #2c3e50;
+            overflow: auto;
+        }
+
+        #canvas {
+            display: block;
+        }
+
+        #lensContainer {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            display: none;
+            z-index: 6;
+            pointer-events: none;
+        }
+
+        #lensContainer.open {
+            display: block;
+            pointer-events: auto;
+        }
+
+        #lensCanvas {
+            border-radius: 50%;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.5);
+            background: #fff;
+            width: 130px;
+            height: 130px;
+            transform-origin: center center;
+        }
+
+        .lens-hint {
+            font-size: 0.68em;
+            color: #34495e;
+            background: #f5f5f5;
+            border: 1px dashed #b0b0b0;
+            border-radius: 6px;
+            padding: 6px 8px;
+            text-align: center;
+            margin: 0 0 8px;
+        }
+
+        .equations {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .equation-box {
+            background: #ecf0f1;
+            padding: 10px;
+            border-radius: 8px;
+            border-right: 5px solid #3498db;
+        }
+
+        .equation-box h3 {
+            color: #2c3e50;
+            margin: 0 0 6px;
+            font-size: 0.78em;
+        }
+
+        .equation {
+            font-size: 0.85em;
+            color: #34495e;
+            font-family: 'Courier New', monospace;
+            line-height: 1.5;
+            direction: ltr;
+            text-align: center;
+        }
+
+        .legend {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: #f5f5f5;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.72em;
+        }
+
+        .circle {
+            width: 13px;
+            height: 13px;
+            border-radius: 50%;
+            border: 2px solid #333;
+            flex-shrink: 0;
+        }
+
+        .info-box {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            padding: 10px;
+            border-radius: 10px;
+            color: white;
+            font-size: 0.75em;
+        }
+
+        .info-box h3 {
+            margin: 0 0 5px;
+            font-size: 0.85em;
+        }
+
+        .info-box p { margin: 0; }
+
+        .process-labels {
+            display: flex;
+            justify-content: flex-start;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .process-label {
+            color: white;
+            padding: 5px 8px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 0.7em;
+        }
+
+        .details-section-title {
+            font-size: 0.72em;
+            font-weight: bold;
+            color: #7f8c8d;
+            margin: 0;
+        }
+
+        /* الوضع المضغوط للشاشات الصغيرة */
+        @media (max-width: 860px) {
+            body { height: auto; overflow-y: auto; }
+            .app-shell { height: auto; min-height: 100dvh; }
+
+            .main-area {
+                display: flex;
+                flex-direction: column;
+            }
+
+            .stage-panel { order: 2; flex: 0 0 auto; }
+            .sidebar-controls { order: 1; flex: 0 0 auto; }
+            .details-panel {
+                order: 3;
+                flex: 0 0 auto;
+                overflow-y: visible;
+            }
+
+            #canvasWrap { min-height: 46vh; }
+
+            .control-group label { width: 56px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        <header class="app-header">
+            <h1>🧪 محاكاة التفاعلات الكيميائية 🧪</h1>
+            <p class="subtitle">تفاعلات المحاليل الشاردية</p>
+        </header>
+
+        <div class="main-area">
+            <aside class="panel sidebar-controls">
+                <div class="control-group">
+                    <label for="reactionType">نوع التفاعل:</label>
+                    <select id="reactionType">
+                        <option value="acid-metal">حمض + معدن</option>
+                        <option value="salt-metal">محلول ملحي + معدن</option>
+                        <option value="acid-carbonate">حمض + كربونات</option>
+                    </select>
+                </div>
+
+                <div class="reactants-row">
+                    <div class="control-group">
+                        <label for="reactant1">المتفاعل 1</label>
+                        <select id="reactant1">
+                            <option value="hcl">حمض الكلور (HCl)</option>
+                            <option value="h2so4">حمض الكبريت (H₂SO₄)</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label for="reactant2">المتفاعل 2</label>
+                        <select id="reactant2">
+                            <option value="zn">الزنك (Zn)</option>
+                            <option value="fe">الحديد (Fe)</option>
+                            <option value="mg">المغنيزيوم (Mg)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="btn-row">
+                    <button id="startBtn">▶ بدء</button>
+                    <button id="stopBtn" class="stop">⏸ إيقاف</button>
+                    <button id="resetBtn" class="reset">🔄 تعيين</button>
+                </div>
+
+                <div class="control-group speed-group">
+                    <label for="speedControl">⚡ سرعة التفاعل</label>
+                    <input type="range" id="speedControl" min="1" max="5" value="3" step="1">
+                    <span id="speedLabel">متوسطة</span>
+                </div>
+
+                <p class="lens-hint">💡 انقر على حافة الصفيحة لإظهار العدسة المكبرة</p>
+            </aside>
+
+            <section class="panel stage-panel">
+                <div id="canvasWrap">
+                    <canvas id="canvas" width="900" height="500"></canvas>
+                </div>
+                <div id="lensContainer">
+                    <canvas id="lensCanvas" width="200" height="200"></canvas>
+                </div>
+            </section>
+
+            <aside class="panel details-panel" id="detailsPanel">
+                <p class="details-section-title">العمليات الجارية</p>
+                <div class="process-labels" id="processLabels"></div>
+
+                <p class="details-section-title">مفتاح الرموز</p>
+                <div class="legend" id="legend"></div>
+
+                <div class="equations">
+                    <div class="equation-box">
+                        <h3>📝 المعادلة الشاردية</h3>
+                        <div class="equation" id="ionicEq">اختر التفاعل وابدأ المحاكاة</div>
+                    </div>
+                    <div class="equation-box">
+                        <h3>📊 المعادلة الإحصائية (الجزيئية)</h3>
+                        <div class="equation" id="molecularEq">اختر التفاعل وابدأ المحاكاة</div>
+                    </div>
+                </div>
+
+                <div class="info-box">
+                    <h3>ℹ️ معلومات التفاعل</h3>
+                    <p id="reactionInfo">اختر نوع التفاعل والمتفاعلات لعرض المعلومات</p>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+<script src="script.obf.js"></script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>
